@@ -3,30 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Map by RoseMol</title>
+    <title>Interactive Map by Rosemol</title>
     
     <!-- Leaflet CSS for styling the map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     
     <style>
+        body {
+            background-color: navy; /* Set the background color of the page to navy blue */
+            color: whitesmoke;            /* Make the text color white */
+            font-family: Arial, sans-serif; /* Set a clean font for the page */
+            margin: 0; /* Remove default page margins */
+            padding: 0;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+
         #map {
             height: 500px; /* Make the map appear with height */
             width: 100%;   /* Full width */
+            box-shadow: 0px 0px 15px 5px white; /* Add white shadow around the map */
         }
 
         .btn-container {
+            text-align: center;
             margin-top: 20px;
         }
+
         .btn {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
             margin-right: 10px;
+            background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent background for buttons */
+            border: 1px solid black;
+            color: white;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: rgba(255, 255, 255, 0.3); /* Slightly brighter background on hover */
+        }
+
+        #distance {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Interactive Map by RoseMol</h1>
+    <h1>Interactive Map by Rosemol</h1>
 
     <!-- Map will be shown here -->
     <div id="map"></div>
