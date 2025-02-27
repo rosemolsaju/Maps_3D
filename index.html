@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map by RoseMol</title>
+    
+    <!-- Leaflet CSS for styling the map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <style>
+        #map {
+            height: 500px; /* Make the map appear with height */
+            width: 100%;   /* Full width */
+        }
+
+        .btn-container {
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Map by RoseMol</h1>
+
+    <!-- Map will be shown here -->
+    <div id="map"></div>
+
+    <p id="distance"></p>  <!-- Display distance here -->
+
+    <!-- Buttons to interact -->
+    <div class="btn-container">
+        <button class="btn" id="clearBtn">Clear Path</button>
+        <button class="btn" id="resetBtn">Reset Map</button>
+        <button class="btn" id="cyclingRouteBtn">Show Cycling Route</button>
+        <button class="btn" id="walkingRouteBtn">Show Walking Route</button>
+    </div>
+
+    <!-- Leaflet JS for map functionality -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <script>
+        // Initialize the map: Start by centering on a specific place, like London
+        var map = L.map('map').setView([51.505, -0.09], 13);
+
+        // Add the OpenStreetMap tiles to the map (basically the map's background)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var points = [];  // Empty array to hold our clicked points
+        var markers = []; // Empty array to hold our markers
+        var polyline = null;  // We'll store the polyline object here to draw paths
+
+        // This function updates the distance displayed on the page
+        function updateDistance() {
+            if (points.length > 1) {
+                var totalDistance = 0;  // Start with zero distance
+                for (var i = 1; i < points.length; i++) {
+                    totalDistance += points[i - 1].distanceTo(points[i]);  // Add the distance between each point
+                }
+                // Update the distance on the page (convert from meters to kilometers)
+                document.getElementById('distance').textContent = "Total distance: " + (totalDistance / 1000).toFixed(2) + " km";
+            }
+        }
+
+        // Function to handle what happens when you click on the map
+        function onMapClick(e) {
+            // Create a new marker where the user clicked
+            var marker = L.marker(e.latlng).addTo(map)
+                .bindPopup("You clicked here!")
+                .openPopup();
+
+            // Save the clicked point and the marker
+            points.push(e.latlng);
+            markers.push(marker);
+
+            // Update the distance every time a point is added
+            updateDistance();
+
+            // If the polyline already exists, just update it. If not, create a new one.
+            if (polyline) {
+                polyline.setLatLngs(points);  // Update the polyline with the new points
+            } else {
+                // Create the polyline (the path) connecting the points and add it to the map
+                polyline = L.polyline(points, {color: 'blue'}).addTo(map);
+            }
+
+            // Make sure the map adjusts to show all the points and the path
+            map.fitBounds(polyline.getBounds());
+        }
+
+        // Add event listener to listen for clicks on the map
+        map.on('click', onMapClick);
+
+        // Clear button removes all the points and resets the map
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            points = [];  // Clear points array
+            markers.forEach(marker => marker.remove());  // Remove all markers
+            markers = [];  // Reset markers array
+            if (polyline) {
+                polyline.remove();  // Remove the path (polyline)
+                polyline = null;  // Reset polyline variable
+            }
+            document.getElementById('distance').textContent = "";  // Clear the distance
+        });
+
+        // Reset button resets the map's view and zoom
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            points = [];  // Clear points array
+            markers.forEach(marker => marker.remove());  // Remove all markers
+            markers = [];  // Reset markers array
+            if (polyline) {
+                polyline.remove();  // Remove the polyline (path)
+                polyline = null;  // Reset polyline variable
+            }
+            document.getElementById('distance').textContent = "";  // Clear the distance
+            map.setView([51.505, -0.09], 13);  // Reset the map view
+        });
+
+        // This function fetches a route from OSRM (or another routing API)
+        function getRoute(start, end, mode) {
+            // OSRM URL for getting the route between two points (mode could be "bike" or "foot")
+            var osrmUrl = `https://router.project-osrm.org/route/v1/${mode}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+
+            // Fetch the route from OSRM and display it
+            fetch(osrmUrl)
+                .then(response => response.json())  // Convert the response into JSON
+                .then(data => {
+                    if (data.routes && data.routes[0]) {
+                        var route = data.routes[0];  // Get the first route
+                        var routeGeoJson = route.geometry;  // The actual route in GeoJSON format
+
+                        // If a polyline exists, remove it first to avoid overlap
+                        if (polyline) {
+                            polyline.remove();
+                        }
+                        // Create a new polyline based on the route's GeoJSON and add it to the map
+                        polyline = L.geoJSON(routeGeoJson, {color: 'green'}).addTo(map);
+                        // Adjust the map view to fit the bounds of the route
+                        map.fitBounds(polyline.getBounds());
+                    } else {
+                        alert("No route found.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching route:', error);
+                    alert("Error fetching route.");
+                });
+        }
+
+        // Add event listeners for the cycling and walking route buttons
+        document.getElementById('cyclingRouteBtn').addEventListener('click', function() {
+            if (points.length >= 2) {
+                // Calculate the cycling route between the first and last clicked points
+                getRoute(points[0], points[points.length - 1], 'bike');
+            } else {
+                alert("Please click at least two points on the map.");
+            }
+        });
+
+        document.getElementById('walkingRouteBtn').addEventListener('click', function() {
+            if (points.length >= 2) {
+                // Calculate the walking route between the first and last clicked points
+                getRoute(points[0], points[points.length - 1], 'foot');
+            } else {
+                alert("Please click at least two points on the map.");
+            }
+        });
+
+        // Optionally, show the user's location when they open the map
+        map.locate({setView: true, maxZoom: 16});  // Find and zoom in on user's location
+
+        map.on('locationfound', function(e) {
+            var radius = e.accuracy / 2;  // Radius of location accuracy
+            L.marker(e.latlng).addTo(map)
+                .bindPopup("You are here! Accuracy: " + radius + " meters.")  // Show accuracy in popup
+                .openPopup();
+            L.circle(e.latlng, radius).addTo(map);  // Draw a circle around the location
+        });
+
+        // If the location can't be found, show an error message
+        map.on('locationerror', function(e) {
+            alert("Unable to detect your location.");
+        });
+
+        // Add zoom control to the map
+        L.control.zoom({position: 'topright'}).addTo(map);  // Place zoom controls on top-right
+    </script>
+</body>
+</html>
